@@ -19,7 +19,14 @@ import TypedSvg.Core exposing (Svg)
 import TypedSvg.Types exposing (Paint(..), px)
 
 
-port generateModelPort : { scheme : Encode.Value, style : Encode.Value, width : Float, height : Float } -> Cmd msg
+port generateModelPort :
+    { numberOfLights : Int
+    , scheme : Encode.Value
+    , style : Encode.Value
+    , width : Float
+    , height : Float
+    }
+    -> Cmd msg
 
 
 port receivedModelPort : (Encode.Value -> msg) -> Sub msg
@@ -36,6 +43,7 @@ main =
 
 type alias Model =
     { lights : List Light
+    , numberOfLights : Int
     , background : Color
     , scheme : Scheme
     , style : Style
@@ -48,24 +56,27 @@ decodeModel : Decoder Model
 decodeModel =
     Field.require "lights" (Decode.list decodeLight) <|
         \lights ->
-            Field.require "background" decodeColor <|
-                \background ->
-                    Field.require "scheme" decodeScheme <|
-                        \scheme ->
-                            Field.require "style" decodeStyle <|
-                                \style ->
-                                    Field.require "width" Decode.float <|
-                                        \width ->
-                                            Field.require "height" Decode.float <|
-                                                \height ->
-                                                    Decode.succeed
-                                                        { lights = lights
-                                                        , background = background
-                                                        , scheme = scheme
-                                                        , style = style
-                                                        , width = width
-                                                        , height = height
-                                                        }
+            Field.require "numberOfLights" Decode.int <|
+                \numberOfLights ->
+                    Field.require "background" decodeColor <|
+                        \background ->
+                            Field.require "scheme" decodeScheme <|
+                                \scheme ->
+                                    Field.require "style" decodeStyle <|
+                                        \style ->
+                                            Field.require "width" Decode.float <|
+                                                \width ->
+                                                    Field.require "height" Decode.float <|
+                                                        \height ->
+                                                            Decode.succeed
+                                                                { lights = lights
+                                                                , numberOfLights = numberOfLights
+                                                                , background = background
+                                                                , scheme = scheme
+                                                                , style = style
+                                                                , width = width
+                                                                , height = height
+                                                                }
 
 
 type alias Light =
@@ -285,6 +296,7 @@ init _ =
     let
         model =
             { lights = []
+            , numberOfLights = 30
             , scheme = MonoScheme
             , style = DefaultStyle
             , background = Color.black
@@ -303,6 +315,7 @@ type Msg
     | ChangedStyle Style
     | ChangedWidth Float
     | ChangedHeight Float
+    | ChangedNumberOfLights Int
 
 
 update : Msg -> Model -> ( Model, Cmd Msg )
@@ -319,9 +332,22 @@ update msg model =
 
         ChangedWidth newWidth ->
             changedWidth newWidth model
-        
+
         ChangedHeight newHeight ->
             changedHeight newHeight model
+
+        ChangedNumberOfLights newNumberOfLights ->
+            changedNumberOfLights newNumberOfLights model
+
+
+changedNumberOfLights : Int -> Model -> ( Model, Cmd Msg )
+changedNumberOfLights newNumberOfLights model =
+    ( { model
+        | numberOfLights =
+            newNumberOfLights
+      }
+    , Cmd.none
+    )
 
 
 changedHeight : Float -> Model -> ( Model, Cmd Msg )
@@ -383,7 +409,9 @@ receivedModel modelValue model =
 generateModel : Model -> Cmd msg
 generateModel model =
     generateModelPort
-        { scheme =
+        { numberOfLights =
+            model.numberOfLights
+        , scheme =
             encodeScheme model.scheme
         , style =
             encodeStyle model.style
@@ -445,8 +473,21 @@ viewControlPanel model =
         , h2 "Dimensions"
         , viewWidthSelector model
         , viewHeightSelector model
+        , h2 "Number of Lights"
+        , viewNumberOfLightsSelector model
         ]
 
+
+viewNumberOfLightsSelector : Model -> Element Msg
+viewNumberOfLightsSelector model =
+    slider
+        { onChange = ChangedNumberOfLights << round
+        , text = "# of lights"
+        , min = 1
+        , max = 500
+        , step = Just 1
+        , value = toFloat model.numberOfLights
+        }
 
 
 viewHeightSelector : Model -> Element Msg

@@ -4,7 +4,7 @@ import { Elm } from './Main.elm';
 
 var app = Elm.Main.init({ node: document.querySelector('main') });
 
-app.ports.generateModelPort.subscribe(function ({ scheme, style, width, height }) {
+app.ports.generateModelPort.subscribe(function ({ numberOfLights, scheme, style, width, height }) {
     var startColor = getRandomBetween(50, 200);
     var colorScheme = new ColorScheme;
     colorScheme.from_hue(startColor)
@@ -18,10 +18,11 @@ app.ports.generateModelPort.subscribe(function ({ scheme, style, width, height }
         return color + alpha;
     });
     var background = getRandomElement(colors);
-    var lights = generateLights(width, height, colors);
+    var lights = generateLights(numberOfLights, width, height, colors);
 
     app.ports.receivedModelPort.send({
         background,
+        numberOfLights,
         lights,
         scheme,
         style,
@@ -37,9 +38,9 @@ function withDefault(defaultValue, value) {
     return value;
 }
 
-function generateLights(modelWidth, modelHeight, colors) {
+function generateLights(numberOfLights, modelWidth, modelHeight, colors) {
     var lights = [];
-    for (var i = 0; i < 20; i++) {
+    for (var i = 0; i < numberOfLights; i++) {
         lights.push(generateLight(modelWidth, modelHeight, colors));
     }
     return lights;
