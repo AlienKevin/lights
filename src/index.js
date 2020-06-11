@@ -4,7 +4,7 @@ import { Elm } from './Main.elm';
 
 var app = Elm.Main.init({ node: document.querySelector('main') });
 
-app.ports.generateModel.subscribe(function ({ scheme, style, width, height }) {
+app.ports.generateModelPort.subscribe(function ({ scheme, style, width, height }) {
     var startColor = getRandomBetween(50, 200);
     var colorScheme = new ColorScheme;
     colorScheme.from_hue(startColor)
@@ -20,7 +20,7 @@ app.ports.generateModel.subscribe(function ({ scheme, style, width, height }) {
     var background = getRandomElement(colors);
     var filters = generateFilters(width, height, colors);
 
-    app.ports.receiveModel.send({
+    app.ports.receivedModelPort.send({
         background,
         filters,
         scheme,

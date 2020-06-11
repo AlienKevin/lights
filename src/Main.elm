@@ -3,20 +3,25 @@ port module Main exposing (..)
 import Browser
 import Color exposing (Color)
 import Color.Convert
+import Element as E exposing (Element)
+import Element.Background as Background
+import Element.Border as Border
+import Element.Font as Font
+import Element.Input as Input
 import Html exposing (Html)
 import Json.Decode as Decode exposing (Decoder)
 import Json.Decode.Field as Field
 import Json.Encode as Encode
 import TypedSvg as Svg
-import TypedSvg.Attributes as Attributes exposing (y)
+import TypedSvg.Attributes as Attributes
 import TypedSvg.Core exposing (Svg)
 import TypedSvg.Types exposing (Paint(..), px)
 
 
-port generateModel : { scheme : Encode.Value, style : String, width : Float, height : Float } -> Cmd msg
+port generateModelPort : { scheme : Encode.Value, style : String, width : Float, height : Float } -> Cmd msg
 
 
-port receiveModel : (Encode.Value -> msg) -> Sub msg
+port receivedModelPort : (Encode.Value -> msg) -> Sub msg
 
 
 main =
@@ -250,6 +255,25 @@ decodeScheme =
                     Decode.fail "Invalid Scheme"
 
 
+schemeToString : Scheme -> String
+schemeToString scheme =
+    case scheme of
+        MonoScheme ->
+            "mono"
+
+        ContrastScheme ->
+            "contrast"
+
+        TriadeScheme _ ->
+            "triade"
+
+        TetradeScheme _ ->
+            "tetrade"
+
+        AnalogicScheme _ ->
+            "analogic"
+
+
 init : () -> ( Model, Cmd Msg )
 init _ =
     let
@@ -263,7 +287,50 @@ init _ =
             }
     in
     ( model
-    , generateModel
+    , generateModel model
+    )
+
+
+type Msg
+    = ReceivedModel Encode.Value
+    | ChangedScheme Scheme
+
+
+update : Msg -> Model -> ( Model, Cmd Msg )
+update msg model =
+    case msg of
+        ReceivedModel modelValue ->
+            receivedModel modelValue model
+
+        ChangedScheme newScheme ->
+            changedScheme newScheme model
+
+
+changedScheme : Scheme -> Model -> ( Model, Cmd Msg )
+changedScheme newScheme model =
+    let
+        newModel =
+            { model
+                | scheme =
+                    newScheme
+            }
+    in
+    ( newModel
+    , generateModel newModel
+    )
+
+
+receivedModel : Encode.Value -> Model -> ( Model, Cmd Msg )
+receivedModel modelValue model =
+    ( Result.withDefault model <|
+        Decode.decodeValue decodeModel modelValue
+    , Cmd.none
+    )
+
+
+generateModel : Model -> Cmd msg
+generateModel model =
+    generateModelPort
         { scheme =
             encodeScheme model.scheme
         , style =
@@ -273,37 +340,27 @@ init _ =
         , height =
             model.height
         }
-    )
-
-
-type Msg
-    = ReceiveModel Encode.Value
-
-
-update : Msg -> Model -> ( Model, Cmd Msg )
-update msg model =
-    case msg of
-        ReceiveModel modelValue ->
-            ( Result.withDefault model <|
-                Decode.decodeValue decodeModel modelValue
-            , Cmd.none
-            )
 
 
 subscriptions : Model -> Sub Msg
 subscriptions model =
-    receiveModel ReceiveModel
+    receivedModelPort ReceivedModel
 
 
 view : Model -> Html Msg
 view model =
-    Svg.svg
-        [ Attributes.width (px model.width)
-        , Attributes.height (px model.height)
-        , Attributes.viewBox 0 0 model.width model.height
-        ]
-    <|
-        List.map viewFilter model.filters
+    E.layout [ E.width E.fill ] <|
+        E.row [ E.width E.fill ]
+            [ E.html <|
+                Svg.svg
+                    [ Attributes.width (px model.width)
+                    , Attributes.height (px model.height)
+                    , Attributes.viewBox 0 0 model.width model.height
+                    ]
+                <|
+                    List.map viewFilter model.filters
+            , viewControlPanel model
+            ]
 
 
 viewFilter : Filter -> Svg Msg
@@ -316,3 +373,86 @@ viewFilter { x, y, width, height, color } =
         , Attributes.fill <| Paint color
         ]
         []
+
+
+viewControlPanel : Model -> Element Msg
+viewControlPanel model =
+    -- , scheme : Scheme
+    -- , style : Style
+    -- , width : Float
+    -- , height : Float
+    -- }
+    E.column
+        [ E.alignTop
+        , E.padding 10
+        ]
+        [ h1 "Controls"
+        , h2 "Scheme"
+        , E.column
+            []
+            ([ MonoScheme
+             , ContrastScheme
+             , TriadeScheme { distance = 1 }
+             , TetradeScheme { distance = 1 }
+             , AnalogicScheme
+                { distance = 1
+                , complemented = False
+                }
+             ]
+                |> List.map
+                    (\scheme ->
+                        button
+                            { onPress =
+                                Just <| ChangedScheme scheme
+                            , text =
+                                schemeToString scheme
+                            , selected =
+                                schemeToString scheme == schemeToString model.scheme
+                            }
+                    )
+            )
+        ]
+
+
+colors =
+    { grey =
+        E.rgb255 211 211 211
+    , light =
+        E.rgb255 255 255 255
+    }
+
+
+h1 text =
+    E.el
+        [ Font.size 20
+        , Font.bold
+        , E.paddingEach { left = 0, right = 0, top = 10, bottom = 10 }
+        ]
+        (E.text text)
+
+
+h2 text =
+    E.el
+        [ Font.size 16
+        , Font.bold
+        , E.paddingEach { left = 0, right = 0, top = 5, bottom = 5 }
+        ]
+        (E.text text)
+
+
+button { onPress, text, selected } =
+    Input.button
+        [ if selected then
+            Background.color colors.grey
+
+          else
+            Background.color colors.light
+        , E.paddingXY 10 5
+        , Border.rounded 10
+        ]
+        { onPress =
+            onPress
+        , label =
+            E.el [] <|
+                E.text text
+        }
