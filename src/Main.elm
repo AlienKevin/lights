@@ -9,9 +9,10 @@ import Element.Border as Border
 import Element.Font as Font
 import Element.Input as Input
 import Html exposing (Html)
-import Json.Decode as Decode exposing (Decoder)
+import Json.Decode as Decode exposing (Decoder, float)
 import Json.Decode.Field as Field
 import Json.Encode as Encode
+import Round
 import TypedSvg as Svg
 import TypedSvg.Attributes as Attributes
 import TypedSvg.Core exposing (Svg)
@@ -300,6 +301,8 @@ type Msg
     = ReceivedModel Encode.Value
     | ChangedScheme Scheme
     | ChangedStyle Style
+    | ChangedWidth Float
+    | ChangedHeight Float
 
 
 update : Msg -> Model -> ( Model, Cmd Msg )
@@ -310,9 +313,35 @@ update msg model =
 
         ChangedScheme newScheme ->
             changedScheme newScheme model
-        
+
         ChangedStyle newStyle ->
             changedStyle newStyle model
+
+        ChangedWidth newWidth ->
+            changedWidth newWidth model
+        
+        ChangedHeight newHeight ->
+            changedHeight newHeight model
+
+
+changedHeight : Float -> Model -> ( Model, Cmd Msg )
+changedHeight newHeight model =
+    ( { model
+        | height =
+            newHeight
+      }
+    , Cmd.none
+    )
+
+
+changedWidth : Float -> Model -> ( Model, Cmd Msg )
+changedWidth newWidth model =
+    ( { model
+        | width =
+            newWidth
+      }
+    , Cmd.none
+    )
 
 
 changedStyle : Style -> Model -> ( Model, Cmd Msg )
@@ -378,7 +407,8 @@ view model =
         ]
     <|
         E.row [ E.width E.fill ]
-            [ E.html <|
+            [ viewControlPanel model
+            , E.html <|
                 Svg.svg
                     [ Attributes.width (px model.width)
                     , Attributes.height (px model.height)
@@ -386,7 +416,6 @@ view model =
                     ]
                 <|
                     List.map viewFilter model.filters
-            , viewControlPanel model
             ]
 
 
@@ -404,8 +433,6 @@ viewFilter { x, y, width, height, color } =
 
 viewControlPanel : Model -> Element Msg
 viewControlPanel model =
-    -- , scheme : Scheme
-    -- , style : Style
     -- , width : Float
     -- , height : Float
     -- }
@@ -418,7 +445,35 @@ viewControlPanel model =
         , viewSchemeSelector model
         , h2 "Style"
         , viewStyleSelector model
+        , h2 "Dimensions"
+        , viewWidthSelector model
+        , viewHeightSelector model
         ]
+
+
+
+viewHeightSelector : Model -> Element Msg
+viewHeightSelector model =
+    slider
+        { onChange = ChangedHeight
+        , text = "Height"
+        , min = 100
+        , max = 1500
+        , step = Nothing
+        , value = model.height
+        }
+
+
+viewWidthSelector : Model -> Element Msg
+viewWidthSelector model =
+    slider
+        { onChange = ChangedWidth
+        , text = "Width"
+        , min = 100
+        , max = 1500
+        , step = Nothing
+        , value = model.width
+        }
 
 
 viewStyleSelector : Model -> Element Msg
@@ -475,7 +530,7 @@ viewSchemeSelector model =
                     TriadeScheme { distance } ->
                         slider
                             { onChange = \newDistance -> ChangedScheme <| TriadeScheme { distance = newDistance }
-                            , text = "distance"
+                            , text = "Distance"
                             , min = 0
                             , max = 1
                             , step = Nothing
@@ -485,7 +540,7 @@ viewSchemeSelector model =
                     TetradeScheme { distance } ->
                         slider
                             { onChange = \newDistance -> ChangedScheme <| TetradeScheme { distance = newDistance }
-                            , text = "distance"
+                            , text = "Distance"
                             , min = 0
                             , max = 1
                             , step = Nothing
@@ -502,7 +557,7 @@ viewSchemeSelector model =
                                                 { distance = newDistance
                                                 , complemented = complemented
                                                 }
-                                , text = "distance"
+                                , text = "Distance"
                                 , min = 0
                                 , max = 1
                                 , step = Nothing
@@ -599,7 +654,7 @@ slider { onChange, text, min, max, step, value } =
         { onChange = onChange
         , label =
             Input.labelAbove []
-                (h3 text)
+                (h3 <| text ++ ": " ++ Round.round 2 value)
         , min = min
         , max = max
         , step = step
