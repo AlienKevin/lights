@@ -25,6 +25,7 @@ port generateModelPort :
     , style : Encode.Value
     , width : Float
     , height : Float
+    , skew : Encode.Value
     }
     -> Cmd msg
 
@@ -49,6 +50,7 @@ type alias Model =
     , style : Style
     , width : Float
     , height : Float
+    , skew : Range
     }
 
 
@@ -68,15 +70,20 @@ decodeModel =
                                                 \width ->
                                                     Field.require "height" Decode.float <|
                                                         \height ->
-                                                            Decode.succeed
-                                                                { lights = lights
-                                                                , numberOfLights = numberOfLights
-                                                                , background = background
-                                                                , scheme = scheme
-                                                                , style = style
-                                                                , width = width
-                                                                , height = height
-                                                                }
+                                                            Field.require "skew"
+                                                                decodeRange
+                                                            <|
+                                                                \skew ->
+                                                                    Decode.succeed
+                                                                        { lights = lights
+                                                                        , numberOfLights = numberOfLights
+                                                                        , background = background
+                                                                        , scheme = scheme
+                                                                        , style = style
+                                                                        , width = width
+                                                                        , height = height
+                                                                        , skew = skew
+                                                                        }
 
 
 type alias Light =
@@ -291,6 +298,22 @@ schemeToString scheme =
             "analogic"
 
 
+type alias Range =
+    ( Float, Float )
+
+
+encodeRange : Range -> Encode.Value
+encodeRange ( start, end ) =
+    Encode.list identity [ Encode.float start, Encode.float end ]
+
+
+decodeRange : Decoder Range
+decodeRange =
+    Decode.map2 Tuple.pair
+        (Decode.index 0 Decode.float)
+        (Decode.index 1 Decode.float)
+
+
 init : () -> ( Model, Cmd Msg )
 init _ =
     let
@@ -302,6 +325,7 @@ init _ =
             , background = Color.black
             , width = 600
             , height = 600
+            , skew = ( 0.8, 1 )
             }
     in
     ( model
@@ -316,6 +340,7 @@ type Msg
     | ChangedWidth Float
     | ChangedHeight Float
     | ChangedNumberOfLights Int
+    | ChangedSkew Range
 
 
 update : Msg -> Model -> ( Model, Cmd Msg )
@@ -339,6 +364,22 @@ update msg model =
         ChangedNumberOfLights newNumberOfLights ->
             changedNumberOfLights newNumberOfLights model
 
+        ChangedSkew newSkew ->
+            changedSkew newSkew model
+
+
+changedSkew : Range -> Model -> ( Model, Cmd Msg )
+changedSkew (newMin, newMax) model =
+    ( { model
+        | skew =
+            if newMin > newMax then
+                model.skew
+            else
+                (newMin, newMax)
+      }
+    , generateModel model
+    )
+
 
 changedNumberOfLights : Int -> Model -> ( Model, Cmd Msg )
 changedNumberOfLights newNumberOfLights model =
@@ -346,7 +387,7 @@ changedNumberOfLights newNumberOfLights model =
         | numberOfLights =
             newNumberOfLights
       }
-    , Cmd.none
+    , generateModel model
     )
 
 
@@ -419,6 +460,8 @@ generateModel model =
             model.width
         , height =
             model.height
+        , skew =
+            encodeRange model.skew
         }
 
 
@@ -475,7 +518,30 @@ viewControlPanel model =
         , viewHeightSelector model
         , h2 "Number of Lights"
         , viewNumberOfLightsSelector model
+        , h2 "Skew"
+        , viewSkewSelector model
         ]
+
+
+viewSkewSelector model =
+    E.column []
+    [ slider
+        { onChange = \newMin -> ChangedSkew ( newMin, Tuple.second model.skew )
+        , text = "min skew"
+        , min = 0.1
+        , max = 2
+        , step = Nothing
+        , value = Tuple.first model.skew
+        }
+    , slider
+        { onChange = \newMax -> ChangedSkew ( Tuple.first model.skew, newMax )
+        , text = "max skew"
+        , min = 0.1
+        , max = 2
+        , step = Nothing
+        , value = Tuple.second model.skew
+        }
+    ]
 
 
 viewNumberOfLightsSelector : Model -> Element Msg
