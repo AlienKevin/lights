@@ -18,7 +18,7 @@ import TypedSvg.Core exposing (Svg)
 import TypedSvg.Types exposing (Paint(..), px)
 
 
-port generateModelPort : { scheme : Encode.Value, style : String, width : Float, height : Float } -> Cmd msg
+port generateModelPort : { scheme : Encode.Value, style : Encode.Value, width : Float, height : Float } -> Cmd msg
 
 
 port receivedModelPort : (Encode.Value -> msg) -> Sub msg
@@ -120,8 +120,13 @@ type Style
     | PaleStyle
 
 
-encodeStyle : Style -> String
+encodeStyle : Style -> Encode.Value
 encodeStyle style =
+    Encode.string <| styleToString style
+
+
+styleToString : Style -> String
+styleToString style =
     case style of
         DefaultStyle ->
             "default"
@@ -294,6 +299,7 @@ init _ =
 type Msg
     = ReceivedModel Encode.Value
     | ChangedScheme Scheme
+    | ChangedStyle Style
 
 
 update : Msg -> Model -> ( Model, Cmd Msg )
@@ -304,6 +310,23 @@ update msg model =
 
         ChangedScheme newScheme ->
             changedScheme newScheme model
+        
+        ChangedStyle newStyle ->
+            changedStyle newStyle model
+
+
+changedStyle : Style -> Model -> ( Model, Cmd Msg )
+changedStyle newStyle model =
+    let
+        newModel =
+            { model
+                | style =
+                    newStyle
+            }
+    in
+    ( newModel
+    , generateModel newModel
+    )
 
 
 changedScheme : Scheme -> Model -> ( Model, Cmd Msg )
@@ -392,85 +415,118 @@ viewControlPanel model =
         ]
         [ h1 "Controls"
         , h2 "Scheme"
-        , E.column
-            []
-            ([ MonoScheme
-             , ContrastScheme
-             , TriadeScheme { distance = 1 }
-             , TetradeScheme { distance = 1 }
-             , AnalogicScheme
-                { distance = 1
-                , complemented = False
-                }
-             ]
-                |> List.map
-                    (\scheme ->
-                        button
-                            { onPress =
-                                Just <| ChangedScheme scheme
-                            , text =
-                                schemeToString scheme
-                            , selected =
-                                schemeToString scheme == schemeToString model.scheme
-                            }
-                    )
-            )
-        , case model.scheme of
-            TriadeScheme { distance } ->
-                slider
-                    { onChange = \newDistance -> ChangedScheme <| TriadeScheme { distance = newDistance }
-                    , text = "distance"
-                    , min = 0
-                    , max = 1
-                    , step = Nothing
-                    , value = distance
-                    }
-
-            TetradeScheme { distance } ->
-                slider
-                    { onChange = \newDistance -> ChangedScheme <| TetradeScheme { distance = newDistance }
-                    , text = "distance"
-                    , min = 0
-                    , max = 1
-                    , step = Nothing
-                    , value = distance
-                    }
-
-            AnalogicScheme { distance, complemented } ->
-                E.column []
-                    [ slider
-                        { onChange =
-                            \newDistance ->
-                                ChangedScheme <|
-                                    AnalogicScheme
-                                        { distance = newDistance
-                                        , complemented = complemented
-                                        }
-                        , text = "distance"
-                        , min = 0
-                        , max = 1
-                        , step = Nothing
-                        , value = distance
-                        }
-                    , Input.checkbox []
-                        { onChange =
-                            \newComplemented ->
-                                ChangedScheme <|
-                                    AnalogicScheme
-                                        { distance = distance
-                                        , complemented = newComplemented
-                                        }
-                        , icon = Input.defaultCheckbox
-                        , checked = complemented
-                        , label =
-                            Input.labelRight []
-                                (E.text "complemented")
-                        }
-                    ]
-
-            _ ->
-                E.none
+        , viewSchemeSelector model
+        , h2 "Style"
+        , viewStyleSelector model
         ]
+
+
+viewStyleSelector : Model -> Element Msg
+viewStyleSelector model =
+    E.column []
+        ([ DefaultStyle
+         , PastelStyle
+         , SoftStyle
+         , HardStyle
+         , LightStyle
+         , PaleStyle
+         ]
+            |> List.map
+                (\style ->
+                    button
+                        { onPress =
+                            Just <| ChangedStyle style
+                        , text =
+                            styleToString style
+                        , selected =
+                            style == model.style
+                        }
+                )
+        )
+
+
+viewSchemeSelector : Model -> Element Msg
+viewSchemeSelector model =
+    E.column
+        []
+    <|
+        ([ MonoScheme
+         , ContrastScheme
+         , TriadeScheme { distance = 1 }
+         , TetradeScheme { distance = 1 }
+         , AnalogicScheme
+            { distance = 1
+            , complemented = False
+            }
+         ]
+            |> List.map
+                (\scheme ->
+                    button
+                        { onPress =
+                            Just <| ChangedScheme scheme
+                        , text =
+                            schemeToString scheme
+                        , selected =
+                            schemeToString scheme == schemeToString model.scheme
+                        }
+                )
+        )
+            ++ [ case model.scheme of
+                    TriadeScheme { distance } ->
+                        slider
+                            { onChange = \newDistance -> ChangedScheme <| TriadeScheme { distance = newDistance }
+                            , text = "distance"
+                            , min = 0
+                            , max = 1
+                            , step = Nothing
+                            , value = distance
+                            }
+
+                    TetradeScheme { distance } ->
+                        slider
+                            { onChange = \newDistance -> ChangedScheme <| TetradeScheme { distance = newDistance }
+                            , text = "distance"
+                            , min = 0
+                            , max = 1
+                            , step = Nothing
+                            , value = distance
+                            }
+
+                    AnalogicScheme { distance, complemented } ->
+                        E.column []
+                            [ slider
+                                { onChange =
+                                    \newDistance ->
+                                        ChangedScheme <|
+                                            AnalogicScheme
+                                                { distance = newDistance
+                                                , complemented = complemented
+                                                }
+                                , text = "distance"
+                                , min = 0
+                                , max = 1
+                                , step = Nothing
+                                , value = distance
+                                }
+                            , Input.checkbox []
+                                { onChange =
+                                    \newComplemented ->
+                                        ChangedScheme <|
+                                            AnalogicScheme
+                                                { distance = distance
+                                                , complemented = newComplemented
+                                                }
+                                , icon = Input.defaultCheckbox
+                                , checked = complemented
+                                , label =
+                                    Input.labelRight []
+                                        (E.text "complemented")
+                                }
+                            ]
+
+                    _ ->
+                        E.none
+               ]
 
 
 colors =
@@ -485,7 +541,7 @@ h1 text =
     E.el
         [ Font.size 22
         , Font.bold
-        , E.paddingEach { left = 0, right = 0, top = 10, bottom = 10 }
+        , E.paddingEach { left = 0, right = 0, top = 15, bottom = 5 }
         ]
         (E.text text)
 
@@ -494,7 +550,7 @@ h2 text =
     E.el
         [ Font.size 18
         , Font.bold
-        , E.paddingEach { left = 0, right = 0, top = 5, bottom = 5 }
+        , E.paddingEach { left = 0, right = 0, top = 15, bottom = 5 }
         ]
         (E.text text)
 
@@ -503,7 +559,7 @@ h3 text =
     E.el
         [ Font.size 16
         , Font.bold
-        , E.paddingEach { left = 0, right = 0, top = 5, bottom = 5 }
+        , E.paddingEach { left = 0, right = 0, top = 10, bottom = 5 }
         ]
         (E.text text)
 
