@@ -4,35 +4,44 @@ import { Elm } from './Main.elm';
 
 var app = Elm.Main.init({ node: document.querySelector('main') });
 
-app.ports.generateModel.subscribe(function ({ style, width, height }) {
+app.ports.generateModel.subscribe(function ({ scheme, style, width, height }) {
     var startColor = getRandomBetween(50, 200);
     var colorScheme = new ColorScheme;
     colorScheme.from_hue(startColor)
-        .scheme('triade')
+        .scheme(scheme.scheme)
+        .distance(withDefault(0, scheme.distance))
+        .add_complement(withDefault(false, scheme.complemented))
         .variation(style);
+    
     var colors = colorScheme.colors().map(function(color) {
         var alpha = getRandomIntBetween(50, 200).toString(16);
         return color + alpha;
     });
-    console.log('AL: colors', colors);
     var background = getRandomElement(colors);
     var filters = generateFilters(width, height, colors);
 
     app.ports.receiveModel.send({
         background,
         filters,
+        scheme,
         style,
         width,
         height,
     });
 });
 
+function withDefault(defaultValue, value) {
+    if (value === undefined) {
+        return defaultValue;
+    }
+    return value;
+}
+
 function generateFilters(modelWidth, modelHeight, colors) {
     var filters = [];
     for (var i = 0; i < 20; i++) {
         filters.push(generateFilter(modelWidth, modelHeight, colors));
     }
-    console.log('AL: filters', filters)
     return filters;
 }
 

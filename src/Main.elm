@@ -8,12 +8,12 @@ import Json.Decode as Decode exposing (Decoder)
 import Json.Decode.Field as Field
 import Json.Encode as Encode
 import TypedSvg as Svg
-import TypedSvg.Core exposing (Svg)
 import TypedSvg.Attributes as Attributes exposing (y)
-import TypedSvg.Types exposing (px, Paint(..))
+import TypedSvg.Core exposing (Svg)
+import TypedSvg.Types exposing (Paint(..), px)
 
 
-port generateModel : { style : String, width : Float, height : Float } -> Cmd msg
+port generateModel : { scheme : Encode.Value, style : String, width : Float, height : Float } -> Cmd msg
 
 
 port receiveModel : (Encode.Value -> msg) -> Sub msg
@@ -31,6 +31,7 @@ main =
 type alias Model =
     { filters : List Filter
     , background : Color
+    , scheme : Scheme
     , style : Style
     , width : Float
     , height : Float
@@ -43,19 +44,22 @@ decodeModel =
         \filters ->
             Field.require "background" decodeColor <|
                 \background ->
-                    Field.require "style" decodeStyle <|
-                        \style ->
-                            Field.require "width" Decode.float <|
-                                \width ->
-                                    Field.require "height" Decode.float <|
-                                        \height ->
-                                            Decode.succeed
-                                                { filters = filters
-                                                , background = background
-                                                , style = style
-                                                , width = width
-                                                , height = height
-                                                }
+                    Field.require "scheme" decodeScheme <|
+                        \scheme ->
+                            Field.require "style" decodeStyle <|
+                                \style ->
+                                    Field.require "width" Decode.float <|
+                                        \width ->
+                                            Field.require "height" Decode.float <|
+                                                \height ->
+                                                    Decode.succeed
+                                                        { filters = filters
+                                                        , background = background
+                                                        , scheme = scheme
+                                                        , style = style
+                                                        , width = width
+                                                        , height = height
+                                                        }
 
 
 type alias Filter =
@@ -162,11 +166,96 @@ decodeStyle =
             )
 
 
+type Scheme
+    = MonoScheme
+    | ContrastScheme
+    | TriadeScheme
+        { distance : Float
+        }
+    | TetradeScheme
+        { distance : Float
+        }
+    | AnalogicScheme
+        { distance : Float
+        , complemented : Bool
+        }
+
+
+encodeScheme : Scheme -> Encode.Value
+encodeScheme scheme =
+    case scheme of
+        MonoScheme ->
+            Encode.object
+                [ ( "scheme", Encode.string "mono" ) ]
+
+        ContrastScheme ->
+            Encode.object
+                [ ( "scheme", Encode.string "contrast" ) ]
+
+        TriadeScheme { distance } ->
+            Encode.object
+                [ ( "scheme", Encode.string "triade" )
+                , ( "distance", Encode.float distance )
+                ]
+
+        TetradeScheme { distance } ->
+            Encode.object
+                [ ( "scheme", Encode.string "tetrade" )
+                , ( "distance", Encode.float distance )
+                ]
+
+        AnalogicScheme { distance, complemented } ->
+            Encode.object
+                [ ( "scheme", Encode.string "analogic" )
+                , ( "distance", Encode.float distance )
+                , ( "complemented", Encode.bool complemented )
+                ]
+
+
+decodeScheme : Decoder Scheme
+decodeScheme =
+    Field.require "scheme" Decode.string <|
+        \scheme ->
+            case scheme of
+                "mono" ->
+                    Decode.succeed MonoScheme
+
+                "contrast" ->
+                    Decode.succeed ContrastScheme
+
+                "triade" ->
+                    Field.require "distance" Decode.float <|
+                        \distance ->
+                            Decode.succeed <|
+                                TriadeScheme { distance = distance }
+
+                "tetrade" ->
+                    Field.require "distance" Decode.float <|
+                        \distance ->
+                            Decode.succeed <|
+                                TetradeScheme { distance = distance }
+
+                "analogic" ->
+                    Field.require "distance" Decode.float <|
+                        \distance ->
+                            Field.require "complemented" Decode.bool <|
+                                \complemented ->
+                                    Decode.succeed <|
+                                        AnalogicScheme
+                                            { distance = distance
+                                            , complemented = complemented
+                                            }
+
+                _ ->
+                    Decode.fail "Invalid Scheme"
+
+
 init : () -> ( Model, Cmd Msg )
 init _ =
     let
         model =
             { filters = []
+            , scheme = MonoScheme
             , style = DefaultStyle
             , background = Color.black
             , width = 600
@@ -175,7 +264,9 @@ init _ =
     in
     ( model
     , generateModel
-        { style =
+        { scheme =
+            encodeScheme model.scheme
+        , style =
             encodeStyle model.style
         , width =
             model.width
@@ -211,7 +302,8 @@ view model =
         , Attributes.height (px model.height)
         , Attributes.viewBox 0 0 model.width model.height
         ]
-        <| List.map viewFilter model.filters
+    <|
+        List.map viewFilter model.filters
 
 
 viewFilter : Filter -> Svg Msg
@@ -224,4 +316,3 @@ viewFilter { x, y, width, height, color } =
         , Attributes.fill <| Paint color
         ]
         []
-
