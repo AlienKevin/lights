@@ -18,11 +18,11 @@ app.ports.generateModelPort.subscribe(function ({ scheme, style, width, height }
         return color + alpha;
     });
     var background = getRandomElement(colors);
-    var filters = generateFilters(width, height, colors);
+    var lights = generateLights(width, height, colors);
 
     app.ports.receivedModelPort.send({
         background,
-        filters,
+        lights,
         scheme,
         style,
         width,
@@ -37,15 +37,15 @@ function withDefault(defaultValue, value) {
     return value;
 }
 
-function generateFilters(modelWidth, modelHeight, colors) {
-    var filters = [];
+function generateLights(modelWidth, modelHeight, colors) {
+    var lights = [];
     for (var i = 0; i < 20; i++) {
-        filters.push(generateFilter(modelWidth, modelHeight, colors));
+        lights.push(generateLight(modelWidth, modelHeight, colors));
     }
-    return filters;
+    return lights;
 }
 
-function generateFilter(modelWidth, modelHeight, colors) {
+function generateLight(modelWidth, modelHeight, colors) {
     var x = getRandomBetween(0, modelWidth);
     var y = getRandomBetween(0, modelHeight);
     var width = getRandomBetween(20, 80);

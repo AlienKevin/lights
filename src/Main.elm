@@ -35,7 +35,7 @@ main =
 
 
 type alias Model =
-    { filters : List Filter
+    { lights : List Light
     , background : Color
     , scheme : Scheme
     , style : Style
@@ -46,8 +46,8 @@ type alias Model =
 
 decodeModel : Decoder Model
 decodeModel =
-    Field.require "filters" (Decode.list decodeFilter) <|
-        \filters ->
+    Field.require "lights" (Decode.list decodeLight) <|
+        \lights ->
             Field.require "background" decodeColor <|
                 \background ->
                     Field.require "scheme" decodeScheme <|
@@ -59,7 +59,7 @@ decodeModel =
                                             Field.require "height" Decode.float <|
                                                 \height ->
                                                     Decode.succeed
-                                                        { filters = filters
+                                                        { lights = lights
                                                         , background = background
                                                         , scheme = scheme
                                                         , style = style
@@ -68,7 +68,7 @@ decodeModel =
                                                         }
 
 
-type alias Filter =
+type alias Light =
     { x : Float
     , y : Float
     , width : Float
@@ -77,8 +77,8 @@ type alias Filter =
     }
 
 
-decodeFilter : Decoder Filter
-decodeFilter =
+decodeLight : Decoder Light
+decodeLight =
     Field.require "x" Decode.float <|
         \x ->
             Field.require "y" Decode.float <|
@@ -284,7 +284,7 @@ init : () -> ( Model, Cmd Msg )
 init _ =
     let
         model =
-            { filters = []
+            { lights = []
             , scheme = MonoScheme
             , style = DefaultStyle
             , background = Color.black
@@ -415,12 +415,12 @@ view model =
                     , Attributes.viewBox 0 0 model.width model.height
                     ]
                 <|
-                    List.map viewFilter model.filters
+                    List.map viewLight model.lights
             ]
 
 
-viewFilter : Filter -> Svg Msg
-viewFilter { x, y, width, height, color } =
+viewLight : Light -> Svg Msg
+viewLight { x, y, width, height, color } =
     Svg.ellipse
         [ Attributes.cx <| px x
         , Attributes.cy <| px y
@@ -433,9 +433,6 @@ viewFilter { x, y, width, height, color } =
 
 viewControlPanel : Model -> Element Msg
 viewControlPanel model =
-    -- , width : Float
-    -- , height : Float
-    -- }
     E.column
         [ E.alignTop
         , E.padding 10
