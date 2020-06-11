@@ -349,7 +349,11 @@ subscriptions model =
 
 view : Model -> Html Msg
 view model =
-    E.layout [ E.width E.fill ] <|
+    E.layout
+        [ Font.size 16
+        , E.width E.fill
+        ]
+    <|
         E.row [ E.width E.fill ]
             [ E.html <|
                 Svg.svg
@@ -411,6 +415,61 @@ viewControlPanel model =
                             }
                     )
             )
+        , case model.scheme of
+            TriadeScheme { distance } ->
+                slider
+                    { onChange = \newDistance -> ChangedScheme <| TriadeScheme { distance = newDistance }
+                    , text = "distance"
+                    , min = 0
+                    , max = 1
+                    , step = Nothing
+                    , value = distance
+                    }
+
+            TetradeScheme { distance } ->
+                slider
+                    { onChange = \newDistance -> ChangedScheme <| TetradeScheme { distance = newDistance }
+                    , text = "distance"
+                    , min = 0
+                    , max = 1
+                    , step = Nothing
+                    , value = distance
+                    }
+
+            AnalogicScheme { distance, complemented } ->
+                E.column []
+                    [ slider
+                        { onChange =
+                            \newDistance ->
+                                ChangedScheme <|
+                                    AnalogicScheme
+                                        { distance = newDistance
+                                        , complemented = complemented
+                                        }
+                        , text = "distance"
+                        , min = 0
+                        , max = 1
+                        , step = Nothing
+                        , value = distance
+                        }
+                    , Input.checkbox []
+                        { onChange =
+                            \newComplemented ->
+                                ChangedScheme <|
+                                    AnalogicScheme
+                                        { distance = distance
+                                        , complemented = newComplemented
+                                        }
+                        , icon = Input.defaultCheckbox
+                        , checked = complemented
+                        , label =
+                            Input.labelRight []
+                                (E.text "complemented")
+                        }
+                    ]
+
+            _ ->
+                E.none
         ]
 
 
@@ -424,7 +483,7 @@ colors =
 
 h1 text =
     E.el
-        [ Font.size 20
+        [ Font.size 22
         , Font.bold
         , E.paddingEach { left = 0, right = 0, top = 10, bottom = 10 }
         ]
@@ -432,6 +491,15 @@ h1 text =
 
 
 h2 text =
+    E.el
+        [ Font.size 18
+        , Font.bold
+        , E.paddingEach { left = 0, right = 0, top = 5, bottom = 5 }
+        ]
+        (E.text text)
+
+
+h3 text =
     E.el
         [ Font.size 16
         , Font.bold
@@ -455,4 +523,31 @@ button { onPress, text, selected } =
         , label =
             E.el [] <|
                 E.text text
+        }
+
+
+slider { onChange, text, min, max, step, value } =
+    Input.slider
+        [ E.height (E.px 30)
+        , E.behindContent
+            (E.el
+                [ E.width E.fill
+                , E.height (E.px 2)
+                , E.centerY
+                , Background.color colors.grey
+                , Border.rounded 2
+                ]
+                E.none
+            )
+        ]
+        { onChange = onChange
+        , label =
+            Input.labelAbove []
+                (h3 text)
+        , min = min
+        , max = max
+        , step = step
+        , value = value
+        , thumb =
+            Input.defaultThumb
         }
