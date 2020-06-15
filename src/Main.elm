@@ -459,11 +459,11 @@ changedGradient newGradient model =
                     let
                         approachOuterOffset =
                             UseGradient
-                            { innerOffset = outerOffset
-                            , outerOffset = outerOffset
-                            , outerAlphaScale = outerAlphaScale
-                            }
-                        
+                                { innerOffset = outerOffset
+                                , outerOffset = outerOffset
+                                , outerAlphaScale = outerAlphaScale
+                                }
+
                         approachInnerOffset =
                             UseGradient
                                 { innerOffset = innerOffset
@@ -475,10 +475,11 @@ changedGradient newGradient model =
                         case model.gradient of
                             NoGradient ->
                                 approachOuterOffset
-                            
+
                             UseGradient oldGradient ->
                                 if oldGradient.outerOffset > outerOffset then
                                     approachInnerOffset
+
                                 else
                                     approachOuterOffset
 
@@ -518,10 +519,24 @@ changeSparsity newSparsity model =
 
 changedSkew : Range -> Model -> ( Model, Cmd Msg )
 changedSkew ( newMin, newMax ) model =
+    let
+        approachMin =
+            ( newMin, newMin )
+
+        approachMax =
+            ( newMax, newMax )
+
+        ( _, oldMax ) =
+            model.skew
+    in
     ( { model
         | skew =
-            if newMin > newMax then
-                model.skew
+            if newMin >= newMax then
+                if oldMax > newMax then
+                    approachMin
+
+                else
+                    approachMax
 
             else
                 ( newMin, newMax )
