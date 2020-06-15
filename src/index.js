@@ -1,4 +1,5 @@
 import ColorScheme from 'color-scheme';
+import { Noise } from 'noisejs';
 
 import { Elm } from './Main.elm';
 
@@ -18,13 +19,14 @@ app.ports.generateModelPort.subscribe(function ({ numberOfLights, scheme, style,
         return color + alpha;
     });
     var background = getRandomElement(colors);
-    var lights = generateLights({
+    var lightConfigs = {
         numberOfLights,
         modelWidth: width,
         modelHeight: height,
         colors,
         skew
-    });
+    };
+    var lights = generateLightsWithNoise(lightConfigs);
 
     app.ports.receivedModelPort.send({
         background,
@@ -45,21 +47,62 @@ function withDefault(defaultValue, value) {
     return value;
 }
 
-function generateLights({ numberOfLights, modelWidth, modelHeight, colors, skew }) {
+function generateLightsWithNoise({ numberOfLights, modelWidth, modelHeight, colors, skew }) {
     var lights = [];
-    for (var i = 0; i < numberOfLights; i++) {
-        lights.push(generateLight({modelWidth, modelHeight, colors, skew}));
+    var density = 1;
+    var highPass = 0.5;
+    // var step = Math.sqrt(modelWidth * modelHeight / numberOfLights * density) * (1 - highPass);
+    var step = 2;
+    console.log('AL: step', step)
+    var noise = new Noise(Math.random());
+    for (var x = 0; x < modelWidth; x += step) {
+        for (var y = 0; y < modelHeight; y += step) {
+            var light = generateLightWithNoise({ modelWidth, modelHeight, colors, skew, noise, density, highPass });
+            if (light !== undefined) {
+                lights.push(light);
+            }
+        }
     }
     return lights;
 }
 
-function generateLight({modelWidth, modelHeight, colors, skew}) {
+function generateLightWithNoise({ modelWidth, modelHeight, colors, skew, noise, density, highPass }) {
+    var x = getRandomBetween(0, modelWidth);
+    var y = getRandomBetween(0, modelHeight);
+    var nRange = 6;
+    var nx = lerp(x, 0, modelWidth, 0, nRange);
+    var ny = lerp(y, 0, modelWidth, 0, nRange);
+    var nValue = lerp(noise.perlin2(nx, ny), -1, 1, 0, 1);
+    var prob = lerp(nValue, highPass, 1, 0, density);
+    if (prob > Math.random()) {
+        var width = lerp(prob, 0, density, 20, 100);
+        var height = width * getRandomBetween(skew[0], skew[1]);
+        var color = getRandomElement(colors);
+        return { x, y, width, height, color };
+    } else {
+        return undefined;
+    }
+}
+
+function generateLightsWithRandom({ numberOfLights, modelWidth, modelHeight, colors, skew }) {
+    var lights = [];
+    for (var i = 0; i < numberOfLights; i++) {
+        lights.push(generateLight({ modelWidth, modelHeight, colors, skew }));
+    }
+    return lights;
+}
+
+function generateLightWithRandom({ modelWidth, modelHeight, colors, skew, simplex }) {
     var x = getRandomBetween(0, modelWidth);
     var y = getRandomBetween(0, modelHeight);
     var width = getRandomBetween(20, 80);
     var height = width * getRandomBetween(skew[0], skew[1]);
     var color = getRandomElement(colors);
     return { x, y, width, height, color };
+}
+
+function lerp(source, sMin, sMax, tMin, tMax) {
+    return tMin + (source - sMin) / (sMax - sMin) * (tMax - tMin);
 }
 
 function getRandomBetween(min, max) {
