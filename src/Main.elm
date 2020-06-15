@@ -3,6 +3,7 @@ port module Main exposing (..)
 import Browser
 import Color exposing (Color)
 import Color.Convert
+import Color.Manipulate
 import ColorPicker
 import Element as E exposing (Element)
 import Element.Background as Background
@@ -54,6 +55,7 @@ type alias Model =
     , width : Float
     , height : Float
     , skew : Range
+    , gradient : Gradient
     , backgroundColorPicker : ColorPicker.State
     }
 
@@ -80,18 +82,23 @@ decodeModel =
                                                                         decodeRange
                                                                     <|
                                                                         \skew ->
-                                                                            Decode.succeed
-                                                                                { lights = lights
-                                                                                , sparsity = sparsity
-                                                                                , step = step
-                                                                                , background = background
-                                                                                , scheme = scheme
-                                                                                , style = style
-                                                                                , width = width
-                                                                                , height = height
-                                                                                , skew = skew
-                                                                                , backgroundColorPicker = ColorPicker.empty
-                                                                                }
+                                                                            Field.require "gradient"
+                                                                                decodeGradient
+                                                                            <|
+                                                                                \gradient ->
+                                                                                    Decode.succeed
+                                                                                        { lights = lights
+                                                                                        , sparsity = sparsity
+                                                                                        , step = step
+                                                                                        , background = background
+                                                                                        , scheme = scheme
+                                                                                        , style = style
+                                                                                        , width = width
+                                                                                        , height = height
+                                                                                        , skew = skew
+                                                                                        , gradient = gradient
+                                                                                        , backgroundColorPicker = ColorPicker.empty
+                                                                                        }
 
 
 extractLights : Decoder (List Light)
@@ -99,6 +106,46 @@ extractLights =
     Field.require "lights" (Decode.list decodeLight) <|
         \lights ->
             Decode.succeed lights
+
+
+type Gradient
+    = UseGradient
+        { innerOffset : Int
+        , outerOffset : Int
+        , outerAlphaScale : Float
+        }
+    | NoGradient
+
+
+decodeGradient : Decoder Gradient
+decodeGradient =
+    Decode.string
+        |> (Decode.andThen <|
+                \name ->
+                    case name of
+                        "UseGradient" ->
+                            Field.require "innerOffset" Decode.int <|
+                                \innerOffset ->
+                                    Field.require "outerOffset" Decode.int <|
+                                        \outerOffset ->
+                                            Field.require "outerAlphaScale" Decode.float <|
+                                                \outerAlphaScale ->
+                                                    Decode.succeed <|
+                                                        UseGradient
+                                                            { innerOffset =
+                                                                innerOffset
+                                                            , outerOffset =
+                                                                outerOffset
+                                                            , outerAlphaScale =
+                                                                outerAlphaScale
+                                                            }
+
+                        "NoGradient" ->
+                            Decode.succeed NoGradient
+
+                        _ ->
+                            Decode.fail "Invailde Gradient"
+           )
 
 
 type alias Light =
@@ -342,6 +389,12 @@ init _ =
             , width = 600
             , height = 600
             , skew = ( 0.8, 1 )
+            , gradient =
+                UseGradient
+                    { innerOffset = 10
+                    , outerOffset = 100
+                    , outerAlphaScale = -0.5
+                    }
             , backgroundColorPicker = ColorPicker.empty
             }
     in
@@ -354,6 +407,7 @@ type Msg
     = ReceivedModel Encode.Value
     | ChangedScheme Scheme
     | ChangedStyle Style
+    | ChangedGradient Gradient
     | ChangedWidth Float
     | ChangedHeight Float
     | ChangeStep Float
@@ -374,6 +428,9 @@ update msg model =
         ChangedStyle newStyle ->
             changedStyle newStyle model
 
+        ChangedGradient newGradient ->
+            changedGradient newGradient model
+
         ChangedWidth newWidth ->
             changedWidth newWidth model
 
@@ -391,6 +448,48 @@ update msg model =
 
         ChangedBackgroundColorPicker colorPickerMsg ->
             changedBackgroundColorPicker colorPickerMsg model
+
+
+changedGradient : Gradient -> Model -> ( Model, Cmd Msg )
+changedGradient newGradient model =
+    ( { model
+        | gradient =
+            case newGradient of
+                UseGradient { innerOffset, outerOffset, outerAlphaScale } ->
+                    let
+                        approachOuterOffset =
+                            UseGradient
+                            { innerOffset = outerOffset
+                            , outerOffset = outerOffset
+                            , outerAlphaScale = outerAlphaScale
+                            }
+                        
+                        approachInnerOffset =
+                            UseGradient
+                                { innerOffset = innerOffset
+                                , outerOffset = innerOffset
+                                , outerAlphaScale = outerAlphaScale
+                                }
+                    in
+                    if innerOffset >= outerOffset then
+                        case model.gradient of
+                            NoGradient ->
+                                approachOuterOffset
+                            
+                            UseGradient oldGradient ->
+                                if oldGradient.outerOffset > outerOffset then
+                                    approachInnerOffset
+                                else
+                                    approachOuterOffset
+
+                    else
+                        newGradient
+
+                NoGradient ->
+                    newGradient
+      }
+    , Cmd.none
+    )
 
 
 changedBackgroundColorPicker : ColorPicker.Msg -> Model -> ( Model, Cmd Msg )
@@ -540,6 +639,19 @@ view model =
         , E.height E.fill
         ]
     <|
+        let
+            lights =
+                case model.gradient of
+                    NoGradient ->
+                        List.map
+                            viewLight
+                            model.lights
+
+                    UseGradient gradient ->
+                        List.indexedMap
+                            (viewLightWithGradient model gradient)
+                            model.lights
+        in
         E.row
             [ E.width E.fill
             , E.height E.fill
@@ -558,10 +670,59 @@ view model =
                         , Attributes.height (px model.height)
                         ]
                         []
-                        :: List.map
-                            viewLight
-                            model.lights
+                        :: lights
             ]
+
+
+viewLightWithGradient :
+    Model
+    ->
+        { innerOffset : Int
+        , outerOffset : Int
+        , outerAlphaScale : Float
+        }
+    -> Int
+    -> Light
+    -> Svg Msg
+viewLightWithGradient model { innerOffset, outerOffset, outerAlphaScale } index { x, y, width, height, color } =
+    let
+        gradientId =
+            "light-gradient-" ++ String.fromInt index
+    in
+    Svg.g []
+        [ Svg.defs []
+            [ Svg.radialGradient
+                [ Attributes.id <| gradientId ]
+                [ Svg.stop
+                    [ Attributes.offset <| String.fromInt innerOffset ++ "%"
+                    , Attributes.stopColor <| Color.toCssString color
+                    ]
+                    []
+                , Svg.stop
+                    [ Attributes.offset <| String.fromInt outerOffset ++ "%"
+                    , Attributes.stopColor <|
+                        Color.toCssString <|
+                            Color.Manipulate.scaleRgb
+                                { redScale = 0
+                                , greenScale = 0
+                                , blueScale = 0
+                                , alphaScale = outerAlphaScale
+                                }
+                            <|
+                                model.background
+                    ]
+                    []
+                ]
+            ]
+        , Svg.ellipse
+            [ Attributes.cx <| px x
+            , Attributes.cy <| px y
+            , Attributes.rx <| px (width / 2)
+            , Attributes.ry <| px (height / 2)
+            , Attributes.fill <| Reference gradientId
+            ]
+            []
+        ]
 
 
 viewLight : Light -> Svg Msg
@@ -589,6 +750,8 @@ viewControlPanel model =
         , viewSchemeSelector model
         , h2 "Style"
         , viewStyleSelector model
+        , h2 "Gradient"
+        , viewGradientSelector model
         , h2 "Background"
         , viewBackgroundSelector model
         , h2 "Dimensions"
@@ -601,6 +764,73 @@ viewControlPanel model =
         , h2 "Skew"
         , viewSkewSelector model
         ]
+
+
+viewGradientSelector model =
+    E.column
+        []
+    <|
+        ([ NoGradient
+         , UseGradient
+            { innerOffset = 10
+            , outerOffset = 100
+            , outerAlphaScale = -0.5
+            }
+         ]
+            |> List.map
+                (\gradient ->
+                    button
+                        { onPress =
+                            Just <| ChangedGradient gradient
+                        , text =
+                            gradientToString gradient
+                        , selected =
+                            gradientToString gradient == gradientToString model.gradient
+                        }
+                )
+        )
+            ++ [ case model.gradient of
+                    NoGradient ->
+                        E.none
+
+                    UseGradient ({ innerOffset, outerOffset, outerAlphaScale } as gradient) ->
+                        E.column []
+                            [ slider
+                                { onChange = \newOffset -> ChangedGradient <| UseGradient { gradient | innerOffset = round newOffset }
+                                , text = "Inner Offset"
+                                , min = 0
+                                , max = 100
+                                , step = Just 1
+                                , value = toFloat innerOffset
+                                }
+                            , slider
+                                { onChange = \newOffset -> ChangedGradient <| UseGradient { gradient | outerOffset = round newOffset }
+                                , text = "Outer Offset"
+                                , min = 0
+                                , max = 100
+                                , step = Just 1
+                                , value = toFloat outerOffset
+                                }
+                            , slider
+                                { onChange = \newScale -> ChangedGradient <| UseGradient { gradient | outerAlphaScale = newScale }
+                                , text = "Outer Alpha Scale"
+                                , min = -1
+                                , max = 1
+                                , step = Nothing
+                                , value = outerAlphaScale
+                                }
+                            ]
+               ]
+
+
+gradientToString : Gradient -> String
+gradientToString gradient =
+    case gradient of
+        NoGradient ->
+            "No Gradient"
+
+        UseGradient _ ->
+            "Use Gradient"
 
 
 viewBackgroundSelector : Model -> Element Msg
