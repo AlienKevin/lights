@@ -3,6 +3,7 @@ port module Main exposing (..)
 import Browser
 import Color exposing (Color)
 import Color.Convert
+import ColorPicker
 import Element as E exposing (Element)
 import Element.Background as Background
 import Element.Border as Border
@@ -53,6 +54,7 @@ type alias Model =
     , width : Float
     , height : Float
     , skew : Range
+    , backgroundColorPicker : ColorPicker.State
     }
 
 
@@ -88,6 +90,7 @@ decodeModel =
                                                                                 , width = width
                                                                                 , height = height
                                                                                 , skew = skew
+                                                                                , backgroundColorPicker = ColorPicker.empty
                                                                                 }
 
 
@@ -335,10 +338,11 @@ init _ =
             , sparsity = 0.6
             , scheme = MonoScheme
             , style = DefaultStyle
-            , background = Color.black
+            , background = Color.white
             , width = 600
             , height = 600
             , skew = ( 0.8, 1 )
+            , backgroundColorPicker = ColorPicker.empty
             }
     in
     ( model
@@ -355,6 +359,7 @@ type Msg
     | ChangeStep Float
     | ChangeSparsity Float
     | ChangedSkew Range
+    | ChangedBackgroundColorPicker ColorPicker.Msg
 
 
 update : Msg -> Model -> ( Model, Cmd Msg )
@@ -383,6 +388,23 @@ update msg model =
 
         ChangedSkew newSkew ->
             changedSkew newSkew model
+
+        ChangedBackgroundColorPicker colorPickerMsg ->
+            changedBackgroundColorPicker colorPickerMsg model
+
+
+changedBackgroundColorPicker : ColorPicker.Msg -> Model -> ( Model, Cmd Msg )
+changedBackgroundColorPicker msg model =
+    let
+        ( newColorPicker, newBackground ) =
+            ColorPicker.update msg model.background model.backgroundColorPicker
+    in
+    ( { model
+        | backgroundColorPicker = newColorPicker
+        , background = newBackground |> Maybe.withDefault model.background
+      }
+    , Cmd.none
+    )
 
 
 changeSparsity : Float -> Model -> ( Model, Cmd Msg )
@@ -530,7 +552,15 @@ view model =
                     , Attributes.viewBox 0 0 model.width model.height
                     ]
                 <|
-                    List.map viewLight model.lights
+                    Svg.rect
+                        [ Attributes.fill (Paint model.background)
+                        , Attributes.width (px model.width)
+                        , Attributes.height (px model.height)
+                        ]
+                        []
+                        :: List.map
+                            viewLight
+                            model.lights
             ]
 
 
@@ -559,6 +589,8 @@ viewControlPanel model =
         , viewSchemeSelector model
         , h2 "Style"
         , viewStyleSelector model
+        , h2 "Background"
+        , viewBackgroundSelector model
         , h2 "Dimensions"
         , viewWidthSelector model
         , viewHeightSelector model
@@ -571,6 +603,15 @@ viewControlPanel model =
         ]
 
 
+viewBackgroundSelector : Model -> Element Msg
+viewBackgroundSelector model =
+    E.html
+        (ColorPicker.view model.background model.backgroundColorPicker
+            |> Html.map ChangedBackgroundColorPicker
+        )
+
+
+viewSkewSelector : Model -> Element Msg
 viewSkewSelector model =
     E.column []
         [ slider
