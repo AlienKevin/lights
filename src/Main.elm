@@ -369,13 +369,14 @@ update msg model =
 
 
 changedSkew : Range -> Model -> ( Model, Cmd Msg )
-changedSkew (newMin, newMax) model =
+changedSkew ( newMin, newMax ) model =
     ( { model
         | skew =
             if newMin > newMax then
                 model.skew
+
             else
-                (newMin, newMax)
+                ( newMin, newMax )
       }
     , generateModel model
     )
@@ -475,9 +476,13 @@ view model =
     E.layout
         [ Font.size 16
         , E.width E.fill
+        , E.height E.fill
         ]
     <|
-        E.row [ E.width E.fill ]
+        E.row
+            [ E.width E.fill
+            , E.height E.fill
+            ]
             [ viewControlPanel model
             , E.html <|
                 Svg.svg
@@ -507,6 +512,8 @@ viewControlPanel model =
     E.column
         [ E.alignTop
         , E.padding 10
+        , E.width <| E.px 200
+        , E.scrollbarY
         ]
         [ h1 "Controls"
         , h2 "Scheme"
@@ -525,23 +532,23 @@ viewControlPanel model =
 
 viewSkewSelector model =
     E.column []
-    [ slider
-        { onChange = \newMin -> ChangedSkew ( newMin, Tuple.second model.skew )
-        , text = "min skew"
-        , min = 0.1
-        , max = 2
-        , step = Nothing
-        , value = Tuple.first model.skew
-        }
-    , slider
-        { onChange = \newMax -> ChangedSkew ( Tuple.first model.skew, newMax )
-        , text = "max skew"
-        , min = 0.1
-        , max = 2
-        , step = Nothing
-        , value = Tuple.second model.skew
-        }
-    ]
+        [ slider
+            { onChange = \newMin -> ChangedSkew ( newMin, Tuple.second model.skew )
+            , text = "min skew"
+            , min = 0.1
+            , max = 2
+            , step = Nothing
+            , value = Tuple.first model.skew
+            }
+        , slider
+            { onChange = \newMax -> ChangedSkew ( Tuple.first model.skew, newMax )
+            , text = "max skew"
+            , min = 0.1
+            , max = 2
+            , step = Nothing
+            , value = Tuple.second model.skew
+            }
+        ]
 
 
 viewNumberOfLightsSelector : Model -> Element Msg
