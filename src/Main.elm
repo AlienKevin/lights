@@ -20,7 +20,8 @@ import TypedSvg.Types exposing (Paint(..), px)
 
 
 port generateModelPort :
-    { numberOfLights : Int
+    { sparsity : Float
+    , step : Float
     , scheme : Encode.Value
     , style : Encode.Value
     , width : Float
@@ -44,7 +45,8 @@ main =
 
 type alias Model =
     { lights : List Light
-    , numberOfLights : Int
+    , sparsity : Float
+    , step : Float
     , background : Color
     , scheme : Scheme
     , style : Style
@@ -58,32 +60,42 @@ decodeModel : Decoder Model
 decodeModel =
     Field.require "lights" (Decode.list decodeLight) <|
         \lights ->
-            Field.require "numberOfLights" Decode.int <|
-                \numberOfLights ->
-                    Field.require "background" decodeColor <|
-                        \background ->
-                            Field.require "scheme" decodeScheme <|
-                                \scheme ->
-                                    Field.require "style" decodeStyle <|
-                                        \style ->
-                                            Field.require "width" Decode.float <|
-                                                \width ->
-                                                    Field.require "height" Decode.float <|
-                                                        \height ->
-                                                            Field.require "skew"
-                                                                decodeRange
-                                                            <|
-                                                                \skew ->
-                                                                    Decode.succeed
-                                                                        { lights = lights
-                                                                        , numberOfLights = numberOfLights
-                                                                        , background = background
-                                                                        , scheme = scheme
-                                                                        , style = style
-                                                                        , width = width
-                                                                        , height = height
-                                                                        , skew = skew
-                                                                        }
+            Field.require "sparsity" Decode.float <|
+                \sparsity ->
+                    Field.require "step" Decode.float <|
+                        \step ->
+                            Field.require "background" decodeColor <|
+                                \background ->
+                                    Field.require "scheme" decodeScheme <|
+                                        \scheme ->
+                                            Field.require "style" decodeStyle <|
+                                                \style ->
+                                                    Field.require "width" Decode.float <|
+                                                        \width ->
+                                                            Field.require "height" Decode.float <|
+                                                                \height ->
+                                                                    Field.require "skew"
+                                                                        decodeRange
+                                                                    <|
+                                                                        \skew ->
+                                                                            Decode.succeed
+                                                                                { lights = lights
+                                                                                , sparsity = sparsity
+                                                                                , step = step
+                                                                                , background = background
+                                                                                , scheme = scheme
+                                                                                , style = style
+                                                                                , width = width
+                                                                                , height = height
+                                                                                , skew = skew
+                                                                                }
+
+
+extractLights : Decoder (List Light)
+extractLights =
+    Field.require "lights" (Decode.list decodeLight) <|
+        \lights ->
+            Decode.succeed lights
 
 
 type alias Light =
@@ -319,7 +331,8 @@ init _ =
     let
         model =
             { lights = []
-            , numberOfLights = 30
+            , step = 2
+            , sparsity = 0.6
             , scheme = MonoScheme
             , style = DefaultStyle
             , background = Color.black
@@ -339,7 +352,8 @@ type Msg
     | ChangedStyle Style
     | ChangedWidth Float
     | ChangedHeight Float
-    | ChangedNumberOfLights Int
+    | ChangeStep Float
+    | ChangeSparsity Float
     | ChangedSkew Range
 
 
@@ -361,11 +375,24 @@ update msg model =
         ChangedHeight newHeight ->
             changedHeight newHeight model
 
-        ChangedNumberOfLights newNumberOfLights ->
-            changedNumberOfLights newNumberOfLights model
+        ChangeStep newStep ->
+            changeStep newStep model
+
+        ChangeSparsity newSparsity ->
+            changeSparsity newSparsity model
 
         ChangedSkew newSkew ->
             changedSkew newSkew model
+
+
+changeSparsity : Float -> Model -> ( Model, Cmd Msg )
+changeSparsity newSparsity model =
+    ( { model
+        | sparsity =
+            newSparsity
+      }
+    , generateModel model
+    )
 
 
 changedSkew : Range -> Model -> ( Model, Cmd Msg )
@@ -382,11 +409,11 @@ changedSkew ( newMin, newMax ) model =
     )
 
 
-changedNumberOfLights : Int -> Model -> ( Model, Cmd Msg )
-changedNumberOfLights newNumberOfLights model =
+changeStep : Float -> Model -> ( Model, Cmd Msg )
+changeStep newStep model =
     ( { model
-        | numberOfLights =
-            newNumberOfLights
+        | step =
+            newStep
       }
     , generateModel model
     )
@@ -443,7 +470,17 @@ changedScheme newScheme model =
 receivedModel : Encode.Value -> Model -> ( Model, Cmd Msg )
 receivedModel modelValue model =
     ( Result.withDefault model <|
-        Decode.decodeValue decodeModel modelValue
+        Result.map
+            (\lights ->
+                { model
+                    | lights =
+                        lights
+                }
+            )
+        <|
+            Decode.decodeValue
+                extractLights
+                modelValue
     , Cmd.none
     )
 
@@ -451,8 +488,10 @@ receivedModel modelValue model =
 generateModel : Model -> Cmd msg
 generateModel model =
     generateModelPort
-        { numberOfLights =
-            model.numberOfLights
+        { sparsity =
+            model.sparsity
+        , step =
+            model.step
         , scheme =
             encodeScheme model.scheme
         , style =
@@ -523,8 +562,10 @@ viewControlPanel model =
         , h2 "Dimensions"
         , viewWidthSelector model
         , viewHeightSelector model
-        , h2 "Number of Lights"
-        , viewNumberOfLightsSelector model
+        , h2 "Step Size"
+        , viewStepSelector model
+        , h2 "Sparsity"
+        , viewSparsitySelector model
         , h2 "Skew"
         , viewSkewSelector model
         ]
@@ -551,15 +592,27 @@ viewSkewSelector model =
         ]
 
 
-viewNumberOfLightsSelector : Model -> Element Msg
-viewNumberOfLightsSelector model =
+viewSparsitySelector : Model -> Element Msg
+viewSparsitySelector model =
     slider
-        { onChange = ChangedNumberOfLights << round
-        , text = "# of lights"
+        { onChange = ChangeSparsity
+        , text = "sparsity"
+        , min = 0.1
+        , max = 1
+        , step = Nothing
+        , value = model.sparsity
+        }
+
+
+viewStepSelector : Model -> Element Msg
+viewStepSelector model =
+    slider
+        { onChange = ChangeStep
+        , text = "step"
         , min = 1
-        , max = 500
-        , step = Just 1
-        , value = toFloat model.numberOfLights
+        , max = 100
+        , step = Nothing
+        , value = model.step
         }
 
 
