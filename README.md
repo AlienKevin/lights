@@ -17,7 +17,7 @@ Generate abstract light paintings in Elm.
 Use [create-elm-app](https://github.com/halfzebra/create-elm-app):
 
 ```
-elm-app start
+elm-app start --no-debug
 ```
 
 # License
