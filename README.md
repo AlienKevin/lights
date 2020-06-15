@@ -1,6 +1,6 @@
-# Night Lights
+# Lights
 
-Generative Abstract Light Paintings in Elm.
+Generate abstract light paintings in Elm.
 
 ![mono](media/mono-soft-variableRadius.png)
 
