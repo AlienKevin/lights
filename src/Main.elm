@@ -720,6 +720,7 @@ view model =
                     [ Attributes.width (px model.width)
                     , Attributes.height (px model.height)
                     , Attributes.viewBox 0 0 model.width model.height
+                    , Html.Attributes.style "margin-left" "300px"
                     ]
                 <|
                     Svg.rect
@@ -800,9 +801,10 @@ viewControlPanel model =
     E.column
         [ E.alignTop
         , E.padding 10
-        , E.width <| E.px 300
         , E.scrollbarY
         , E.htmlAttribute <| Html.Attributes.style "height" "90vh"
+        , E.htmlAttribute <| Html.Attributes.style "position" "fixed"
+        , E.htmlAttribute <| Html.Attributes.style "top" "0"
         ]
         [ h1 "Controls"
         , h2 "Scheme"
