@@ -30,6 +30,7 @@ port generateModelPort :
     , width : Float
     , height : Float
     , skew : Encode.Value
+    , sizeRange : Range
     }
     -> Cmd msg
 
@@ -56,6 +57,7 @@ type alias Model =
     , width : Float
     , height : Float
     , skew : Range
+    , sizeRange : Range
     , gradient : Gradient
     , backgroundColorPicker : ColorPicker.State
     }
@@ -83,23 +85,28 @@ decodeModel =
                                                                         decodeRange
                                                                     <|
                                                                         \skew ->
-                                                                            Field.require "gradient"
-                                                                                decodeGradient
+                                                                            Field.require "sizeRange"
+                                                                                decodeRange
                                                                             <|
-                                                                                \gradient ->
-                                                                                    Decode.succeed
-                                                                                        { lights = lights
-                                                                                        , sparsity = sparsity
-                                                                                        , step = step
-                                                                                        , background = background
-                                                                                        , scheme = scheme
-                                                                                        , style = style
-                                                                                        , width = width
-                                                                                        , height = height
-                                                                                        , skew = skew
-                                                                                        , gradient = gradient
-                                                                                        , backgroundColorPicker = ColorPicker.empty
-                                                                                        }
+                                                                                \sizeRange ->
+                                                                                    Field.require "gradient"
+                                                                                        decodeGradient
+                                                                                    <|
+                                                                                        \gradient ->
+                                                                                            Decode.succeed
+                                                                                                { lights = lights
+                                                                                                , sparsity = sparsity
+                                                                                                , step = step
+                                                                                                , background = background
+                                                                                                , scheme = scheme
+                                                                                                , style = style
+                                                                                                , width = width
+                                                                                                , height = height
+                                                                                                , skew = skew
+                                                                                                , sizeRange = sizeRange
+                                                                                                , gradient = gradient
+                                                                                                , backgroundColorPicker = ColorPicker.empty
+                                                                                                }
 
 
 extractLights : Decoder (List Light)
@@ -390,6 +397,7 @@ init _ =
             , width = 600
             , height = 600
             , skew = ( 0.8, 1 )
+            , sizeRange = ( 20, 100 )
             , gradient =
                 UseGradient
                     { innerOffset = 10
@@ -414,6 +422,7 @@ type Msg
     | ChangeStep Float
     | ChangeSparsity Float
     | ChangedSkew Range
+    | ChangedSizeRange Range
     | ChangedBackgroundColorPicker ColorPicker.Msg
 
 
@@ -446,6 +455,9 @@ update msg model =
 
         ChangedSkew newSkew ->
             changedSkew newSkew model
+        
+        ChangedSizeRange newSizeRange ->
+            changedSizeRange newSizeRange model
 
         ChangedBackgroundColorPicker colorPickerMsg ->
             changedBackgroundColorPicker colorPickerMsg model
@@ -513,6 +525,34 @@ changeSparsity newSparsity model =
     ( { model
         | sparsity =
             newSparsity
+      }
+    , generateModel model
+    )
+
+
+changedSizeRange : Range -> Model -> ( Model, Cmd Msg )
+changedSizeRange ( newMin, newMax ) model =
+    let
+        approachMin =
+            ( newMin, newMin )
+
+        approachMax =
+            ( newMax, newMax )
+
+        ( _, oldMax ) =
+            model.sizeRange
+    in
+    ( { model
+        | sizeRange =
+            if newMin >= newMax then
+                if oldMax > newMax then
+                    approachMin
+
+                else
+                    approachMax
+
+            else
+                ( newMin, newMax )
       }
     , generateModel model
     )
@@ -639,6 +679,8 @@ generateModel model =
             model.height
         , skew =
             encodeRange model.skew
+        , sizeRange =
+            model.sizeRange
         }
 
 
@@ -780,9 +822,34 @@ viewControlPanel model =
         , viewSparsitySelector model
         , h2 "Skew"
         , viewSkewSelector model
+        , h2 "Size Range"
+        , viewSizeRangeSelector model
         ]
 
 
+viewSizeRangeSelector : Model -> Element Msg
+viewSizeRangeSelector model =
+    E.column []
+        [ slider
+            { onChange = \newMin -> ChangedSizeRange ( newMin, Tuple.second model.sizeRange )
+            , text = "min size"
+            , min = 1
+            , max = 1000
+            , step = Nothing
+            , value = Tuple.first model.sizeRange
+            }
+        , slider
+            { onChange = \newMax -> ChangedSizeRange ( Tuple.first model.sizeRange, newMax )
+            , text = "max size"
+            , min = 1
+            , max = 1000
+            , step = Nothing
+            , value = Tuple.second model.sizeRange
+            }
+        ]
+
+
+viewGradientSelector : Model -> Element Msg
 viewGradientSelector model =
     E.column
         []

@@ -5,7 +5,7 @@ import { Elm } from './Main.elm';
 
 var app = Elm.Main.init({ node: document.querySelector('main') });
 
-app.ports.generateModelPort.subscribe(function ({ step, sparsity, scheme, style, width, height, skew }) {
+app.ports.generateModelPort.subscribe(function ({ step, sparsity, scheme, style, width, height, skew, sizeRange }) {
     var startColor = getRandomBetween(50, 200);
     var colorScheme = new ColorScheme;
     colorScheme.from_hue(startColor)
@@ -25,7 +25,8 @@ app.ports.generateModelPort.subscribe(function ({ step, sparsity, scheme, style,
         step,
         sparsity,
         colors,
-        skew
+        skew,
+        sizeRange,
     };
     var lights = generateLightsWithNoise(lightConfigs);
 
@@ -49,13 +50,13 @@ function withDefault(defaultValue, value) {
     return value;
 }
 
-function generateLightsWithNoise({ step, sparsity, modelWidth, modelHeight, colors, skew }) {
+function generateLightsWithNoise({ step, sparsity, modelWidth, modelHeight, colors, skew, sizeRange }) {
     var lights = [];
     var density = 1;
     var noise = new Noise(Math.random());
     for (var x = 0; x < modelWidth; x += step) {
         for (var y = 0; y < modelHeight; y += step) {
-            var light = generateLightWithNoise({ modelWidth, modelHeight, colors, skew, noise, density, sparsity });
+            var light = generateLightWithNoise({ modelWidth, modelHeight, colors, skew, sizeRange, noise, density, sparsity });
             if (light !== undefined) {
                 lights.push(light);
             }
@@ -64,7 +65,7 @@ function generateLightsWithNoise({ step, sparsity, modelWidth, modelHeight, colo
     return lights;
 }
 
-function generateLightWithNoise({ modelWidth, modelHeight, colors, skew, noise, density, sparsity }) {
+function generateLightWithNoise({ modelWidth, modelHeight, colors, skew, sizeRange, noise, density, sparsity }) {
     var x = getRandomBetween(0, modelWidth);
     var y = getRandomBetween(0, modelHeight);
     var nRange = 6;
@@ -73,7 +74,7 @@ function generateLightWithNoise({ modelWidth, modelHeight, colors, skew, noise, 
     var nValue = lerp(noise.perlin2(nx, ny), -1, 1, 0, 1);
     var prob = lerp(nValue, sparsity, 1, 0, density);
     if (prob > Math.random()) {
-        var width = lerp(prob, 0, density, 20, 100);
+        var width = lerp(prob, 0, density, sizeRange[0], sizeRange[1]);
         var height = width * getRandomBetween(skew[0], skew[1]);
         var color = getRandomElement(colors);
         return { x, y, width, height, color };

@@ -16,6 +16,14 @@ Generate abstract light paintings in Elm.
 
 ![triade-soft-gradient-large](media/triade-soft-variableRadius-gradient-large.png)
 
+![mono-default-variableRadius-gradient-sizeRangeFrom100To427](media/mono-default-variableRadius-gradient-sizeRangeFrom100To427.png)
+
+![analogic-pastel-variableRadius-gradient-sizeRangeFrom1To76-wide](media/analogic-pastel-variableRadius-gradient-sizeRangeFrom1To76-wide.png)
+
+![contrast-default-variableRadius-gradient-sizeRangeFrom1To500-wide](media/contrast-default-variableRadius-gradient-sizeRangeFrom1To500-wide.png)
+
+![analogic-default-variableRadius-gradient-sizeRangeFrom244To988-large](media/analogic-default-variableRadius-gradient-sizeRangeFrom244To988-large.png)
+
 # Development
 
 Use [create-elm-app](https://github.com/halfzebra/create-elm-app):
