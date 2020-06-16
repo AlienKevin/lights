@@ -10,6 +10,7 @@ import Element.Background as Background
 import Element.Border as Border
 import Element.Font as Font
 import Element.Input as Input
+import FeatherIcons
 import Html exposing (Html)
 import Html.Attributes
 import Json.Decode as Decode exposing (Decoder, float)
@@ -844,12 +845,13 @@ viewControlPanel model =
         ]
 
 
+viewRefreshButton : Model -> Element Msg
 viewRefreshButton model =
-    button
+    iconButton
         { onPress =
             Just <| GenerateModel
-        , text =
-            "Refresh"
+        , icon =
+            FeatherIcons.refreshCw
         , selected =
             False
         }
@@ -1169,6 +1171,29 @@ h3 text =
 
 
 button { onPress, text, selected } =
+    generalButton
+        { onPress =
+            onPress
+        , label =
+            E.el [] <|
+                E.text text
+        , selected =
+            selected
+        }
+
+
+iconButton { onPress, icon, selected } =
+    generalButton
+        { onPress =
+            onPress
+        , label =
+            E.html (icon |> FeatherIcons.toHtml [])
+        , selected =
+            selected
+        }
+
+
+generalButton { onPress, label, selected } =
     Input.button
         [ if selected then
             Background.color colors.grey
@@ -1184,8 +1209,7 @@ button { onPress, text, selected } =
         { onPress =
             onPress
         , label =
-            E.el [] <|
-                E.text text
+            label
         }
 
 
