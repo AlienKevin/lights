@@ -11,6 +11,7 @@ import Element.Border as Border
 import Element.Font as Font
 import Element.Input as Input
 import Html exposing (Html)
+import Html.Attributes
 import Json.Decode as Decode exposing (Decoder, float)
 import Json.Decode.Field as Field
 import Json.Encode as Encode
@@ -757,8 +758,9 @@ viewControlPanel model =
     E.column
         [ E.alignTop
         , E.padding 10
-        , E.width <| E.px 200
+        , E.width <| E.px 300
         , E.scrollbarY
+        , E.htmlAttribute <| Html.Attributes.style "height" "90vh"
         ]
         [ h1 "Controls"
         , h2 "Scheme"
