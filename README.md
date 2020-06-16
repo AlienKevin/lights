@@ -2,6 +2,12 @@
 
 Generate abstract light paintings in Elm.
 
+![app demo](media/app-demo.png)
+
+## Paintings
+
+### No Gradients
+
 ![mono](media/mono-soft-variableRadius.png)
 
 ![triade](media/triade-hard-variableRadius.png)
@@ -9,6 +15,8 @@ Generate abstract light paintings in Elm.
 ![tetrade](media/tetrade-default-variableRadius.png)
 
 ![analogic](media/analogic-default-variableRadius-wide.png)
+
+### With Gradients
 
 ![mono-pastel-gradient](media/mono-pastel-variableRadius-gradient.png)
 
