@@ -5,6 +5,13 @@ import { Elm } from './Main.elm';
 
 var app = Elm.Main.init({ node: document.querySelector('main') });
 
+app.ports.downloadModelPort.subscribe(function() {
+    let svgString = document.getElementById("model")
+        .innerHTML
+        .replace(/\<svg(.+?)\>/, "<svg$1 xmlns=\"http://www.w3.org/2000/svg\" version=\"1.1\">");
+    download(svgString, "image/svg+xml", "model.svg");
+});
+
 app.ports.generateModelPort.subscribe(function ({ step, sparsity, scheme, style, width, height, skew, sizeRange }) {
     var startColor = getRandomBetween(50, 200);
     var colorScheme = new ColorScheme;
@@ -118,4 +125,18 @@ function getRandomElement(array) {
     } else {
         return array[getRandomIntBetween(0, array.length)];
     }
+}
+
+function downloadURI(uri, name) {
+    let link = document.createElement("a");
+    link.download = name;
+    link.href = uri;
+    link.click();
+}
+
+function download(data, type, name) {
+    let blob = new Blob([data], {type});
+    let url = window.URL.createObjectURL(blob);
+    downloadURI(url, name);
+    window.URL.revokeObjectURL(url);
 }

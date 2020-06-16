@@ -39,6 +39,9 @@ port generateModelPort :
 port receivedModelPort : (Encode.Value -> msg) -> Sub msg
 
 
+port downloadModelPort : () -> Cmd msg
+
+
 main =
     Browser.element
         { init = init
@@ -426,6 +429,7 @@ type Msg
     | ChangedSizeRange Range
     | ChangedBackgroundColorPicker ColorPicker.Msg
     | GenerateModel
+    | DownloadModel
 
 
 update : Msg -> Model -> ( Model, Cmd Msg )
@@ -466,6 +470,9 @@ update msg model =
 
         GenerateModel ->
             ( model, generateModel model )
+
+        DownloadModel ->
+            ( model, downloadModelPort () )
 
 
 changedGradient : Gradient -> Model -> ( Model, Cmd Msg )
@@ -690,7 +697,7 @@ generateModel model =
 
 
 subscriptions : Model -> Sub Msg
-subscriptions model =
+subscriptions _ =
     receivedModelPort ReceivedModel
 
 
@@ -720,21 +727,25 @@ view model =
             , E.height E.fill
             ]
             [ viewControlPanel model
-            , E.html <|
-                Svg.svg
-                    [ Attributes.width (px model.width)
-                    , Attributes.height (px model.height)
-                    , Attributes.viewBox 0 0 model.width model.height
-                    , Html.Attributes.style "margin-left" "300px"
-                    ]
-                <|
-                    Svg.rect
-                        [ Attributes.fill (Paint model.background)
-                        , Attributes.width (px model.width)
+            , E.el
+                [ E.htmlAttribute <| Html.Attributes.style "margin-left" "300px"
+                , E.htmlAttribute <| Html.Attributes.id "model"
+                ]
+              <|
+                E.html <|
+                    Svg.svg
+                        [ Attributes.width (px model.width)
                         , Attributes.height (px model.height)
+                        , Attributes.viewBox 0 0 model.width model.height
                         ]
-                        []
-                        :: lights
+                    <|
+                        Svg.rect
+                            [ Attributes.fill (Paint model.background)
+                            , Attributes.width (px model.width)
+                            , Attributes.height (px model.height)
+                            ]
+                            []
+                            :: lights
             ]
 
 
@@ -840,20 +851,29 @@ viewControlPanel model =
             [ E.htmlAttribute <| Html.Attributes.style "position" "fixed"
             , E.htmlAttribute <| Html.Attributes.style "top" "calc(90vh + 10px)"
             ]
-            [ viewRefreshButton model
+            [ viewRefreshButton
+            , viewDownloadButton
             ]
         ]
 
 
-viewRefreshButton : Model -> Element Msg
-viewRefreshButton model =
+viewDownloadButton : Element Msg
+viewDownloadButton =
+    iconButton
+        { onPress =
+            Just <| DownloadModel
+        , icon =
+            FeatherIcons.download
+        }
+
+
+viewRefreshButton : Element Msg
+viewRefreshButton =
     iconButton
         { onPress =
             Just <| GenerateModel
         , icon =
             FeatherIcons.refreshCw
-        , selected =
-            False
         }
 
 
@@ -1182,14 +1202,14 @@ button { onPress, text, selected } =
         }
 
 
-iconButton { onPress, icon, selected } =
+iconButton { onPress, icon } =
     generalButton
         { onPress =
             onPress
         , label =
             E.html (icon |> FeatherIcons.toHtml [])
         , selected =
-            selected
+            False
         }
 
 
