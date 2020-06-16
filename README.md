@@ -10,7 +10,11 @@ Generate abstract light paintings in Elm.
 
 ![analogic](media/analogic-default-variableRadius-wide.png)
 
-![gradient](media/mono-pastel-variableRadius-gradient.png)
+![mono-pastel-gradient](media/mono-pastel-variableRadius-gradient.png)
+
+![mono-soft-gradient-large](media/mono-soft-variableRadius-gradient-large.png)
+
+![triade-soft-gradient-large](media/triade-soft-variableRadius-gradient-large.png)
 
 # Development
 
