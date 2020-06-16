@@ -805,37 +805,46 @@ viewControlPanel model =
     E.column
         [ E.alignTop
         , E.padding 10
-        , E.scrollbarY
-        , E.htmlAttribute <| Html.Attributes.style "height" "90vh"
-        , E.htmlAttribute <| Html.Attributes.style "position" "fixed"
-        , E.htmlAttribute <| Html.Attributes.style "top" "0"
         ]
-        [ h1 "Controls"
-        , h2 "Generation"
-        , viewGenerationSelector model
-        , h2 "Scheme"
-        , viewSchemeSelector model
-        , h2 "Style"
-        , viewStyleSelector model
-        , h2 "Gradient"
-        , viewGradientSelector model
-        , h2 "Background"
-        , viewBackgroundSelector model
-        , h2 "Dimensions"
-        , viewWidthSelector model
-        , viewHeightSelector model
-        , h2 "Step Size"
-        , viewStepSelector model
-        , h2 "Sparsity"
-        , viewSparsitySelector model
-        , h2 "Skew"
-        , viewSkewSelector model
-        , h2 "Size Range"
-        , viewSizeRangeSelector model
+        [ E.column
+            [ E.alignTop
+            , E.padding 10
+            , E.scrollbarY
+            , E.htmlAttribute <| Html.Attributes.style "height" "90vh"
+            , E.htmlAttribute <| Html.Attributes.style "position" "fixed"
+            , E.htmlAttribute <| Html.Attributes.style "top" "0"
+            ]
+            [ h1 "Controls"
+            , h2 "Scheme"
+            , viewSchemeSelector model
+            , h2 "Style"
+            , viewStyleSelector model
+            , h2 "Gradient"
+            , viewGradientSelector model
+            , h2 "Background"
+            , viewBackgroundSelector model
+            , h2 "Dimensions"
+            , viewWidthSelector model
+            , viewHeightSelector model
+            , h2 "Step Size"
+            , viewStepSelector model
+            , h2 "Sparsity"
+            , viewSparsitySelector model
+            , h2 "Skew"
+            , viewSkewSelector model
+            , h2 "Size Range"
+            , viewSizeRangeSelector model
+            ]
+        , E.row
+            [ E.htmlAttribute <| Html.Attributes.style "position" "fixed"
+            , E.htmlAttribute <| Html.Attributes.style "top" "calc(90vh + 10px)"
+            ]
+            [ viewRefreshButton model
+            ]
         ]
 
 
-viewGenerationSelector model =
+viewRefreshButton model =
     button
         { onPress =
             Just <| GenerateModel
