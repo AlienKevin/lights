@@ -835,7 +835,7 @@ viewSizeRangeSelector model =
             , text = "min size"
             , min = 1
             , max = 1000
-            , step = Nothing
+            , step = Just 1
             , value = Tuple.first model.sizeRange
             }
         , slider
@@ -843,7 +843,7 @@ viewSizeRangeSelector model =
             , text = "max size"
             , min = 1
             , max = 1000
-            , step = Nothing
+            , step = Just 1
             , value = Tuple.second model.sizeRange
             }
         ]
@@ -900,7 +900,7 @@ viewGradientSelector model =
                                 , text = "Outer Alpha Scale"
                                 , min = -1
                                 , max = 1
-                                , step = Nothing
+                                , step = Just 0.1
                                 , value = outerAlphaScale
                                 }
                             ]
@@ -933,7 +933,7 @@ viewSkewSelector model =
             , text = "min skew"
             , min = 0.1
             , max = 2
-            , step = Nothing
+            , step = Just 0.1
             , value = Tuple.first model.skew
             }
         , slider
@@ -941,7 +941,7 @@ viewSkewSelector model =
             , text = "max skew"
             , min = 0.1
             , max = 2
-            , step = Nothing
+            , step = Just 0.1
             , value = Tuple.second model.skew
             }
         ]
@@ -954,7 +954,7 @@ viewSparsitySelector model =
         , text = "sparsity"
         , min = 0.1
         , max = 1
-        , step = Nothing
+        , step = Just 0.1
         , value = model.sparsity
         }
 
@@ -966,7 +966,7 @@ viewStepSelector model =
         , text = "step"
         , min = 1
         , max = 100
-        , step = Nothing
+        , step = Just 1
         , value = model.step
         }
 
@@ -978,7 +978,7 @@ viewHeightSelector model =
         , text = "Height"
         , min = 100
         , max = 1500
-        , step = Nothing
+        , step = Just 1
         , value = model.height
         }
 
@@ -990,7 +990,7 @@ viewWidthSelector model =
         , text = "Width"
         , min = 100
         , max = 1500
-        , step = Nothing
+        , step = Just 1
         , value = model.width
         }
 
@@ -1052,7 +1052,7 @@ viewSchemeSelector model =
                             , text = "Distance"
                             , min = 0
                             , max = 1
-                            , step = Nothing
+                            , step = Just 0.1
                             , value = distance
                             }
 
@@ -1062,7 +1062,7 @@ viewSchemeSelector model =
                             , text = "Distance"
                             , min = 0
                             , max = 1
-                            , step = Nothing
+                            , step = Just 0.1
                             , value = distance
                             }
 
@@ -1079,7 +1079,7 @@ viewSchemeSelector model =
                                 , text = "Distance"
                                 , min = 0
                                 , max = 1
-                                , step = Nothing
+                                , step = Just 0.1
                                 , value = distance
                                 }
                             , Input.checkbox []
@@ -1173,7 +1173,7 @@ slider { onChange, text, min, max, step, value } =
         { onChange = onChange
         , label =
             Input.labelAbove []
-                (h3 <| text ++ ": " ++ Round.round 2 value)
+                (h3 <| text ++ ": " ++ Round.round 1 value)
         , min = min
         , max = max
         , step = step
