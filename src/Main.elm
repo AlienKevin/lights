@@ -424,6 +424,7 @@ type Msg
     | ChangedSkew Range
     | ChangedSizeRange Range
     | ChangedBackgroundColorPicker ColorPicker.Msg
+    | GenerateModel
 
 
 update : Msg -> Model -> ( Model, Cmd Msg )
@@ -455,12 +456,15 @@ update msg model =
 
         ChangedSkew newSkew ->
             changedSkew newSkew model
-        
+
         ChangedSizeRange newSizeRange ->
             changedSizeRange newSizeRange model
 
         ChangedBackgroundColorPicker colorPickerMsg ->
             changedBackgroundColorPicker colorPickerMsg model
+
+        GenerateModel ->
+            ( model, generateModel model )
 
 
 changedGradient : Gradient -> Model -> ( Model, Cmd Msg )
@@ -807,6 +811,8 @@ viewControlPanel model =
         , E.htmlAttribute <| Html.Attributes.style "top" "0"
         ]
         [ h1 "Controls"
+        , h2 "Generation"
+        , viewGenerationSelector model
         , h2 "Scheme"
         , viewSchemeSelector model
         , h2 "Style"
@@ -827,6 +833,17 @@ viewControlPanel model =
         , h2 "Size Range"
         , viewSizeRangeSelector model
         ]
+
+
+viewGenerationSelector model =
+    button
+        { onPress =
+            Just <| GenerateModel
+        , text =
+            "Refresh"
+        , selected =
+            False
+        }
 
 
 viewSizeRangeSelector : Model -> Element Msg
@@ -1108,7 +1125,9 @@ viewSchemeSelector model =
 colors =
     { grey =
         E.rgb255 211 211 211
-    , light =
+    , lightGrey =
+        E.rgb255 233 233 233
+    , white =
         E.rgb255 255 255 255
     }
 
@@ -1146,7 +1165,10 @@ button { onPress, text, selected } =
             Background.color colors.grey
 
           else
-            Background.color colors.light
+            Background.color colors.white
+        , E.mouseOver
+            [ Background.color colors.lightGrey
+            ]
         , E.paddingXY 10 5
         , Border.rounded 10
         ]
